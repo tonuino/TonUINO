@@ -4,21 +4,20 @@
 #include <MFRC522.h>
 #include <SPI.h>
 #include <SoftwareSerial.h>
-#include <avr/sleep.h>
 
 /*
    _____         _____ _____ _____ _____
   |_   _|___ ___|  |  |     |   | |     |
     | | | . |   |  |  |-   -| | | |  |  |
-    |_| |___|_|_|_____|_____|_|___|_____|
-    TonUINO Version 2.1
+    |_| |___|_|_|_____|_____|_|___|_____| All-in-One
+    TonUINO Version 2.2
 
     created by Thorsten Voß and licensed under GNU/GPL.
     Information and contribution at https://tonuino.de.
 */
 
 // uncomment the below line to enable five button support
-//#define FIVEBUTTONS
+#define FIVEBUTTONS
 
 static const uint32_t cardCookie = 322417479;
 
@@ -140,7 +139,7 @@ void shuffleQueue() {
 void writeSettingsToFlash() {
   Serial.println(F("=== writeSettingsToFlash()"));
   int address = sizeof(myFolder->folder) * 100;
-  EEPROM.put(address, mySettings);
+  EEPROM_put(address, mySettings);
 }
 
 void resetSettings() {
@@ -153,7 +152,7 @@ void resetSettings() {
   mySettings.eq = 1;
   mySettings.locked = false;
   mySettings.standbyTimer = 0;
-  mySettings.invertVolumeButtons = true;
+  mySettings.invertVolumeButtons = false;
   mySettings.shortCuts[0].folder = 0;
   mySettings.shortCuts[1].folder = 0;
   mySettings.shortCuts[2].folder = 0;
@@ -184,7 +183,7 @@ void migrateSettings(int oldVersion) {
 void loadSettingsFromFlash() {
   Serial.println(F("=== loadSettingsFromFlash()"));
   int address = sizeof(myFolder->folder) * 100;
-  EEPROM.get(address, mySettings);
+  EEPROM_get(address, mySettings);
   if (mySettings.cookie != cardCookie)
     resetSettings();
   migrateSettings(mySettings.version);
@@ -458,10 +457,10 @@ class RepeatSingleModifier: public Modifier {
       Serial.println(F("== RepeatSingleModifier::handleNext() -> REPEAT CURRENT TRACK"));
       delay(50);
       if (isPlaying()) return true;
-      if (myFolder->mode == 3 || myFolder->mode == 9){
+      if (myFolder->mode == 3 || myFolder->mode == 9) {
         mp3.playFolderTrack(myFolder->folder, queue[currentTrack - 1]);
       }
-      else{
+      else {
         mp3.playFolderTrack(myFolder->folder, currentTrack);
       }
       _lastTrackFinished = 0;
@@ -512,6 +511,7 @@ class FeedbackModifier: public Modifier {
 
 // Leider kann das Modul selbst keine Queue abspielen, daher müssen wir selbst die Queue verwalten
 static void nextTrack(uint16_t track) {
+  delay(100);
   Serial.println(track);
   if (activeModifier != NULL)
     if (activeModifier->handleNext() == true)
@@ -532,7 +532,6 @@ static void nextTrack(uint16_t track) {
   if (myFolder->mode == 1 || myFolder->mode == 7) {
     Serial.println(F("Hörspielmodus ist aktiv -> keinen neuen Track spielen"));
     setstandbyTimer();
-    //    mp3.sleep(); // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
   }
   if (myFolder->mode == 2 || myFolder->mode == 8) {
     if (currentTrack != numTracksInFolder) {
@@ -541,7 +540,6 @@ static void nextTrack(uint16_t track) {
       Serial.print(F("Albummodus ist aktiv -> nächster Track: "));
       Serial.print(currentTrack);
     } else
-      //      mp3.sleep();   // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
       setstandbyTimer();
     { }
   }
@@ -562,7 +560,6 @@ static void nextTrack(uint16_t track) {
 
   if (myFolder->mode == 4) {
     Serial.println(F("Einzel Modus aktiv -> Strom sparen"));
-    //    mp3.sleep();      // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
     setstandbyTimer();
   }
   if (myFolder->mode == 5) {
@@ -573,11 +570,10 @@ static void nextTrack(uint16_t track) {
       Serial.println(currentTrack);
       mp3.playFolderTrack(myFolder->folder, currentTrack);
       // Fortschritt im EEPROM abspeichern
-      EEPROM.update(myFolder->folder, currentTrack);
+      EEPROM_update(myFolder->folder, currentTrack);
     } else {
-      //      mp3.sleep();  // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
       // Fortschritt zurück setzen
-      EEPROM.update(myFolder->folder, 1);
+      EEPROM_update(myFolder->folder, 1);
       setstandbyTimer();
     }
   }
@@ -622,7 +618,7 @@ static void previousTrack() {
     }
     mp3.playFolderTrack(myFolder->folder, currentTrack);
     // Fortschritt im EEPROM abspeichern
-    EEPROM.update(myFolder->folder, currentTrack);
+    EEPROM_update(myFolder->folder, currentTrack);
   }
   delay(1000);
 }
@@ -639,15 +635,15 @@ byte trailerBlock = 7;
 MFRC522::StatusCode status;
 
 #define buttonPause A0
-#define buttonUp A1
-#define buttonDown A2
+#define buttonUp A2
+#define buttonDown A1
 #define busyPin 4
 #define shutdownPin 7
 #define openAnalogPin A7
 
 #ifdef FIVEBUTTONS
-#define buttonFourPin A3
-#define buttonFivePin A4
+#define buttonFourPin A4
+#define buttonFivePin A3
 #endif
 
 #define LONG_PRESS 1000
@@ -687,18 +683,7 @@ void checkStandbyAtMillis() {
   if (sleepAtMillis != 0 && millis() > sleepAtMillis) {
     Serial.println(F("=== power off!"));
     // enter sleep state
-    digitalWrite(shutdownPin, HIGH);
-    delay(500);
-
-    // http://discourse.voss.earth/t/intenso-s10000-powerbank-automatische-abschaltung-software-only/805
-    // powerdown to 27mA (powerbank switches off after 30-60s)
-    mfrc522.PCD_AntennaOff();
-    mfrc522.PCD_SoftPowerDown();
-    mp3.sleep();
-
-    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-    cli();  // Disable interrupts
-    sleep_mode();
+    digitalWrite(shutdownPin, LOW);
   }
 }
 
@@ -720,6 +705,18 @@ void waitForTrackToFinish() {
 
 void setup() {
 
+  // spannung einschalten
+  pinMode(shutdownPin, OUTPUT);
+  digitalWrite(shutdownPin, HIGH);
+
+  // sd karten zugang aus
+  pinMode(A5, OUTPUT);
+  digitalWrite(A5, LOW);
+
+  // verstärker an
+  pinMode(8, OUTPUT);
+  digitalWrite(8, LOW);
+
   Serial.begin(115200); // Es gibt ein paar Debug Ausgaben über die serielle Schnittstelle
 
   // Wert für randomSeed() erzeugen durch das mehrfache Sammeln von rauschenden LSBs eines offenen Analogeingangs
@@ -735,8 +732,8 @@ void setup() {
   Serial.println(F("\n _____         _____ _____ _____ _____"));
   Serial.println(F("|_   _|___ ___|  |  |     |   | |     |"));
   Serial.println(F("  | | | . |   |  |  |-   -| | | |  |  |"));
-  Serial.println(F("  |_| |___|_|_|_____|_____|_|___|_____|\n"));
-  Serial.println(F("TonUINO Version 2.1"));
+  Serial.println(F("  |_| |___|_|_|_____|_____|_|___|_____| All-in-One\n"));
+  Serial.println(F("TonUINO Version 2.2"));
   Serial.println(F("created by Thorsten Voß and licensed under GNU/GPL."));
   Serial.println(F("Information and contribution at https://tonuino.de.\n"));
 
@@ -762,8 +759,7 @@ void setup() {
   // NFC Leser initialisieren
   SPI.begin();        // Init SPI bus
   mfrc522.PCD_Init(); // Init MFRC522
-  mfrc522
-  .PCD_DumpVersionToSerial(); // Show details of PCD - MFRC522 Card Reader
+  mfrc522.PCD_DumpVersionToSerial(); // Show details of PCD - MFRC522 Card Reader
   for (byte i = 0; i < 6; i++) {
     key.keyByte[i] = 0xFF;
   }
@@ -775,16 +771,13 @@ void setup() {
   pinMode(buttonFourPin, INPUT_PULLUP);
   pinMode(buttonFivePin, INPUT_PULLUP);
 #endif
-  pinMode(shutdownPin, OUTPUT);
-  digitalWrite(shutdownPin, LOW);
-
 
   // RESET --- ALLE DREI KNÖPFE BEIM STARTEN GEDRÜCKT HALTEN -> alle EINSTELLUNGEN werden gelöscht
   if (digitalRead(buttonPause) == LOW && digitalRead(buttonUp) == LOW &&
       digitalRead(buttonDown) == LOW) {
     Serial.println(F("Reset -> EEPROM wird gelöscht"));
-    for (int i = 0; i < EEPROM.length(); i++) {
-      EEPROM.update(i, 0);
+    for (int i = 0; i < 1024; i++) {
+      EEPROM_update(i, 0);
     }
     loadSettingsFromFlash();
   }
@@ -1297,8 +1290,8 @@ void adminMenu(bool fromCard = false) {
   }
   else if (subMenu == 11) {
     Serial.println(F("Reset -> EEPROM wird gelöscht"));
-    for (int i = 0; i < EEPROM.length(); i++) {
-      EEPROM.update(i, 0);
+    for (int i = 0; i < 1024; i++) {
+      EEPROM_update(i, 0);
     }
     resetSettings();
     mp3.playMp3FolderTrack(999);
@@ -1477,7 +1470,7 @@ bool setupFolder(folderSettings * theFolder) {
   if (theFolder->mode == 0) return false;
 
   //  // Hörbuchmodus -> Fortschritt im EEPROM auf 1 setzen
-  //  EEPROM.update(theFolder->folder, 1);
+  //  EEPROM_update(theFolder->folder, 1);
 
   // Einzelmodus -> Datei abfragen
   if (theFolder->mode == 4)
@@ -1804,4 +1797,29 @@ bool checkTwo ( uint8_t a[], uint8_t b[] ) {
     }
   }
   return true;
+}
+
+// emulates EEPROM.put() .get() and .update() on LGT8F328P platform
+// partially sourced from: https://playground.arduino.cc/Code/EEPROMWriteAnything/
+template <class T> int EEPROM_put(int ee, const T& value)
+{
+  const byte* p = (const byte*)(const void*)&value;
+  unsigned int i;
+
+  for (i = 0; i < sizeof(value); i++) EEPROM.write(ee++, *p++);
+  return i;
+}
+
+template <class T> int EEPROM_get(int ee, T& value)
+{
+  byte* p = (byte*)(void*)&value;
+  unsigned int i;
+
+  for (i = 0; i < sizeof(value); i++) *p++ = EEPROM.read(ee++);
+  return i;
+}
+
+template <class T> void EEPROM_update(int ee, const T& value)
+{
+  EEPROM.read(ee) != value ? EEPROM.write(ee, value) : delay(0);
 }

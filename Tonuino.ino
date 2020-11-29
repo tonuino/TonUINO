@@ -953,11 +953,11 @@ void loop() {
     readButtons();
 
     // admin menu
-    if ((pauseButton.pressedFor(LONG_PRESS) || upButton.pressedFor(LONG_PRESS) || downButton.pressedFor(LONG_PRESS)) && pauseButton.isPressed() && upButton.isPressed() && downButton.isPressed()) {
+    if ((pauseButton.pressedFor(LONG_PRESS) || buttonFour.pressedFor(LONG_PRESS) || buttonFive.pressedFor(LONG_PRESS)) && pauseButton.isPressed() && buttonFour.isPressed() && buttonFive.isPressed()) {
       mp3.pause();
       do {
         readButtons();
-      } while (pauseButton.isPressed() || upButton.isPressed() || downButton.isPressed());
+      } while (pauseButton.isPressed() || buttonFour.isPressed() || buttonFive.isPressed());
       readButtons();
       adminMenu();
       break;
@@ -1370,7 +1370,7 @@ uint8_t voiceMenu(int numberOfOptions, int startMessage, int messageOffset,
       delay(1000);
     }
 
-    if (upButton.pressedFor(LONG_PRESS)) {
+    if (buttonFour.pressedFor(LONG_PRESS)) {
       returnValue = min(returnValue + 10, numberOfOptions);
       Serial.println(returnValue);
       //mp3.pause();
@@ -1382,9 +1382,9 @@ uint8_t voiceMenu(int numberOfOptions, int startMessage, int messageOffset,
         else
           mp3.playFolderTrack(previewFromFolder, returnValue);
         }*/
-      ignoreUpButton = true;
-    } else if (upButton.wasReleased()) {
-      if (!ignoreUpButton) {
+      ignoreButtonFour = true;
+    } else if (buttonFour.wasReleased()) {
+      if (!ignoreButtonFour) {
         returnValue = min(returnValue + 1, numberOfOptions);
         Serial.println(returnValue);
         //mp3.pause();
@@ -1399,11 +1399,11 @@ uint8_t voiceMenu(int numberOfOptions, int startMessage, int messageOffset,
           delay(1000);
         }
       } else {
-        ignoreUpButton = false;
+        ignoreButtonFour = false;
       }
     }
 
-    if (downButton.pressedFor(LONG_PRESS)) {
+    if (buttonFive.pressedFor(LONG_PRESS)) {
       returnValue = max(returnValue - 10, 1);
       Serial.println(returnValue);
       //mp3.pause();
@@ -1415,9 +1415,9 @@ uint8_t voiceMenu(int numberOfOptions, int startMessage, int messageOffset,
         else
           mp3.playFolderTrack(previewFromFolder, returnValue);
         }*/
-      ignoreDownButton = true;
-    } else if (downButton.wasReleased()) {
-      if (!ignoreDownButton) {
+      ignoreButtonFive = true;
+    } else if (buttonFive.wasReleased()) {
+      if (!ignoreButtonFive) {
         returnValue = max(returnValue - 1, 1);
         Serial.println(returnValue);
         //mp3.pause();
@@ -1433,7 +1433,7 @@ uint8_t voiceMenu(int numberOfOptions, int startMessage, int messageOffset,
           delay(1000);
         }
       } else {
-        ignoreDownButton = false;
+        ignoreButtonFive = false;
       }
     }
   } while (true);

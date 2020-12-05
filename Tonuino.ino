@@ -153,7 +153,7 @@ void resetSettings() {
   mySettings.eq = 1;
   mySettings.locked = false;
   mySettings.standbyTimer = 0;
-  mySettings.invertVolumeButtons = true;
+  mySettings.invertVolumeButtons = false;
   mySettings.shortCuts[0].folder = 0;
   mySettings.shortCuts[1].folder = 0;
   mySettings.shortCuts[2].folder = 0;
@@ -1012,7 +1012,7 @@ void loop() {
     if (upButton.pressedFor(LONG_PRESS)) {
 #ifndef FIVEBUTTONS
       if (isPlaying()) {
-        if (!mySettings.invertVolumeButtons) {
+        if (mySettings.invertVolumeButtons) {
           volumeUpButton();
         }
         else {
@@ -1026,7 +1026,7 @@ void loop() {
 #endif
     } else if (upButton.wasReleased()) {
       if (!ignoreUpButton)
-        if (!mySettings.invertVolumeButtons) {
+        if (mySettings.invertVolumeButtons) {
           nextButton();
         }
         else {
@@ -1038,7 +1038,7 @@ void loop() {
     if (downButton.pressedFor(LONG_PRESS)) {
 #ifndef FIVEBUTTONS
       if (isPlaying()) {
-        if (!mySettings.invertVolumeButtons) {
+        if (mySettings.invertVolumeButtons) {
           volumeDownButton();
         }
         else {
@@ -1052,7 +1052,7 @@ void loop() {
 #endif
     } else if (downButton.wasReleased()) {
       if (!ignoreDownButton) {
-        if (!mySettings.invertVolumeButtons) {
+        if (mySettings.invertVolumeButtons) {
           previousButton();
         }
         else {
@@ -1064,7 +1064,7 @@ void loop() {
 #ifdef FIVEBUTTONS
     if (buttonFour.wasReleased()) {
       if (isPlaying()) {
-        if (!mySettings.invertVolumeButtons) {
+        if (mySettings.invertVolumeButtons) {
           volumeUpButton();
         }
         else {
@@ -1077,7 +1077,7 @@ void loop() {
     }
     if (buttonFive.wasReleased()) {
       if (isPlaying()) {
-        if (!mySettings.invertVolumeButtons) {
+        if (mySettings.invertVolumeButtons) {
           volumeDownButton();
         }
         else {
